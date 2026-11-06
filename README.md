@@ -7,6 +7,7 @@ World Music Finder is an interactive map for discovering music connected to coun
 - Next.js and React
 - MapLibre GL JS for the interactive map
 - MapLibre's public world map style and vector tile service, used while developing the map
+- Natural Earth 1:110m country boundaries as a bundled fallback beneath live vector tiles
 
 ## Development
 
