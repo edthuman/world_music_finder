@@ -14,7 +14,20 @@ async function loadWorldStyle(): Promise<StyleSpecification> {
   const style = (await response.json()) as StyleSpecification;
   return {
     ...style,
-    layers: style.layers.filter((layer) => layer.id !== "geolines" && layer.id !== "geolines-label"),
+    layers: style.layers
+      .filter((layer) => layer.id !== "geolines" && layer.id !== "geolines-label")
+      .map((layer) => {
+        if (layer.id !== "countries-label" || layer.type !== "symbol") return layer;
+
+        return {
+          ...layer,
+          layout: {
+            ...layer.layout,
+            "text-field": "{NAME}",
+            "text-padding": 0,
+          },
+        };
+      }),
   };
 }
 
