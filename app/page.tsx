@@ -35,6 +35,7 @@ export default function Home() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const selectedCountryId = useRef("");
+  const clearSelection = useRef<() => void>(() => { });
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -73,13 +74,34 @@ export default function Home() {
       };
 
       map.once("load", () => {
+        const countryBoundaryLayer = "countries-boundary";
+        const baseBoundaryFilter = map?.getFilter(countryBoundaryLayer);
+        const updateCountryBoundary = () => {
+          if (!map || !map.getLayer(countryBoundaryLayer)) return;
+
+          map.setFilter(countryBoundaryLayer, selectedCountryId.current
+            ? ["!", ["==", ["get", "ADM0_A3"], selectedCountryId.current]]
+            : baseBoundaryFilter ?? ["all"]);
+        };
+        clearSelection.current = () => {
+          selectedCountryId.current = "";
+          if (map?.getLayer(countryBoundaryLayer)) {
+            map.setFilter(countryBoundaryLayer, baseBoundaryFilter ?? ["all"]);
+          }
+          map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
+          setSelectedCountry(null);
+        };
+
         map?.addLayer({
           id: "country-selection-fill",
           type: "fill",
           source: "maplibre",
           "source-layer": "countries",
           filter: ["==", ["get", "ADM0_A3"], ""],
-          paint: { "fill-color": "#f15a38", "fill-opacity": 0.48 },
+          paint: {
+            "fill-color": "#f15a38",
+            "fill-opacity": 0.48,
+          },
         }, "countries-label");
         map?.addLayer({
           id: "country-hover-fill",
@@ -95,16 +117,19 @@ export default function Home() {
           if (typeof country?.NAME === "string" && typeof country?.ADM0_A3 === "string") {
             if (selectedCountryId.current === country.ADM0_A3) {
               selectedCountryId.current = "";
+              updateCountryBoundary();
               map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
               setSelectedCountry(null);
               return;
             }
 
             selectedCountryId.current = country.ADM0_A3;
+            updateCountryBoundary();
             map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], country.ADM0_A3]);
             setSelectedCountry(country.NAME);
           } else {
             selectedCountryId.current = "";
+            updateCountryBoundary();
             map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
             setSelectedCountry(null);
           }
@@ -148,8 +173,7 @@ export default function Home() {
             type="button"
             aria-label="Clear selected country"
             onClick={() => {
-              selectedCountryId.current = "";
-              setSelectedCountry(null);
+              clearSelection.current();
             }}
           >
             x
