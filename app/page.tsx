@@ -25,7 +25,6 @@ export default function Home() {
     if (!mapContainer.current) return;
 
     let map: Map | undefined;
-    let resizeObserver: ResizeObserver | undefined;
     let cancelled = false;
 
     loadWorldStyle().then((style) => {
@@ -41,17 +40,12 @@ export default function Home() {
         attributionControl: false,
       });
 
-      resizeObserver = new ResizeObserver(() => map?.resize());
-      resizeObserver.observe(mapContainer.current);
-      map.once("load", () => map?.resize());
-
       map.addControl(new NavigationControl({ showCompass: false }), "bottom-right");
       map.addControl(new AttributionControl({ compact: true }), "bottom-left");
     });
 
     return () => {
       cancelled = true;
-      resizeObserver?.disconnect();
       map?.remove();
     };
   }, []);
