@@ -56,11 +56,22 @@ export default function Home() {
         attributionControl: false,
       });
 
-      const countryLayers = ["countries-fill", "countries-label"];
       let hoveredCountryId: string | undefined;
 
       const findCountry = (point: { x: number; y: number }) => {
-        const exact = map?.queryRenderedFeatures([point.x, point.y], { layers: countryLayers })[0];
+        const label = map?.queryRenderedFeatures([point.x, point.y], { layers: ["countries-label"] })
+          .find((feature) => typeof feature.properties?.NAME === "string");
+        if (label) {
+          const labelName = label.properties?.NAME;
+          const labelCountryId = label.properties?.ADM0_A3;
+          if (typeof labelCountryId === "string") return label;
+
+          const country = map?.querySourceFeatures("maplibre", { sourceLayer: "countries" })
+            .find((feature) => feature.properties?.NAME === labelName);
+          if (country) return country;
+        }
+
+        const exact = map?.queryRenderedFeatures([point.x, point.y], { layers: ["countries-fill"] })[0];
         if (exact) return exact;
 
         const radius = 5;
