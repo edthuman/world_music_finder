@@ -10,8 +10,8 @@ const worldStyleUrl = "https://demotiles.maplibre.org/style.json";
 const pmtilesProtocol = new Protocol();
 let pmtilesProtocolRegistered = false;
 const mapColors = {
-  neutralLight: "#ffffff",
-  selectedCountry: "#f15a38",
+  hoveredCountry: "#d9d9d9",
+  selectedCountry: "#4d4d4d",
 } as const;
 
 async function loadWorldStyle(): Promise<StyleSpecification> {
@@ -143,7 +143,7 @@ export default function Home() {
           source: "maplibre",
           "source-layer": "countries",
           filter: ["==", ["get", "ADM0_A3"], ""],
-          paint: { "fill-color": mapColors.neutralLight, "fill-opacity": 0.28 },
+          paint: { "fill-color": mapColors.hoveredCountry, "fill-opacity": 0.3 },
         }, "countries-label");
 
         map?.on("click", (event) => {
