@@ -1,5 +1,5 @@
-# Country fallback data
+# Bundled world map tiles
 
-Derived from Natural Earth 1:110m Admin 0 Countries, version 5.1.1 (public domain). These simplified country shapes remain visible while detailed map tiles load.
+`world.pmtiles` bundles MapLibre's World vector tiles. MapLibre reads only the tiles needed for the current view.
 
-Source: https://www.naturalearthdata.com/downloads/110m-cultural-vectors/
+Source and dataset details: [MapLibre Demo Tiles](https://github.com/maplibre/demotiles#maplibre-world-demo-map). Country polygons come from [Natural Earth](https://www.naturalearthdata.com/).

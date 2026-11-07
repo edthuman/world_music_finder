@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Map, NavigationControl, AttributionControl, setWorkerUrl, type StyleSpecification } from "maplibre-gl";
+import { Map, NavigationControl, AttributionControl, addProtocol, setWorkerUrl, type StyleSpecification } from "maplibre-gl";
+import { Protocol } from "pmtiles";
 
 setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString());
 
 const worldStyleUrl = "https://demotiles.maplibre.org/style.json";
+const pmtilesProtocol = new Protocol();
+let pmtilesProtocolRegistered = false;
 const mapColors = {
-  defaultCountryFill: "#EAB38F",
   neutralLight: "#ffffff",
   selectedCountry: "#f15a38",
 } as const;
@@ -18,10 +20,10 @@ async function loadWorldStyle(): Promise<StyleSpecification> {
 
   const style = (await response.json()) as StyleSpecification;
   const layers = style.layers
-    .filter((layer) => layer.id !== "geolines" && layer.id !== "geolines-label")
+    .filter((layer) => !["coastline", "geolines", "geolines-label"].includes(layer.id))
     .map((layer) => {
-      if (["coastline", "countries-fill", "countries-boundary"].includes(layer.id)) {
-        return { ...layer, minzoom: 3 };
+      if (["countries-fill", "countries-boundary"].includes(layer.id)) {
+        return { ...layer, minzoom: 0 };
       }
 
       if (layer.id !== "countries-label" || layer.type !== "symbol") return layer;
@@ -35,63 +37,15 @@ async function loadWorldStyle(): Promise<StyleSpecification> {
         },
       };
     });
-  const countryFill = layers.find((layer) => layer.id === "countries-fill" && layer.type === "fill");
-  const fallbackLayers: StyleSpecification["layers"] = [
-    {
-      id: "country-fallback-fill",
-      type: "fill",
-      source: "country-fallback",
-      maxzoom: 9,
-      paint: {
-        "fill-color": countryFill?.type === "fill"
-          ? countryFill.paint?.["fill-color"] ?? mapColors.defaultCountryFill
-          : mapColors.defaultCountryFill,
-      },
-    },
-    {
-      id: "country-fallback-boundary",
-      type: "line",
-      source: "country-fallback",
-      maxzoom: 9,
-      paint: {
-        "line-color": mapColors.neutralLight,
-        "line-width": 0.8,
-        "line-opacity": 0.85,
-      },
-    },
-    {
-      id: "country-fallback-selection-fill",
-      type: "fill",
-      source: "country-fallback",
-      maxzoom: 9,
-      filter: ["==", ["get", "ADM0_A3"], ""],
-      paint: {
-        "fill-color": mapColors.selectedCountry,
-        "fill-opacity": 0.48,
-      },
-    },
-    {
-      id: "country-fallback-hover-fill",
-      type: "fill",
-      source: "country-fallback",
-      maxzoom: 9,
-      filter: ["==", ["get", "ADM0_A3"], ""],
-      paint: { "fill-color": mapColors.neutralLight, "fill-opacity": 0.28 },
-    },
-  ];
-  const countryFillIndex = layers.findIndex((layer) => layer.id === "countries-fill");
-  if (countryFillIndex === -1) throw new Error("World style is missing its countries-fill layer");
-  layers.splice(countryFillIndex, 0, ...fallbackLayers);
+  const sources = { ...style.sources };
+  sources.maplibre = {
+    type: "vector",
+    url: `pmtiles://${window.location.origin}/data/world.pmtiles`,
+  };
 
   return {
     ...style,
-    sources: {
-      ...style.sources,
-      "country-fallback": {
-        type: "geojson",
-        data: "/data/natural-earth-countries-110m.geojson",
-      },
-    },
+    sources,
     layers,
   };
 }
@@ -107,9 +61,13 @@ export default function Home() {
 
     let map: Map | undefined;
     let cancelled = false;
-
     loadWorldStyle().then((style) => {
       if (cancelled || !mapContainer.current) return;
+
+      if (!pmtilesProtocolRegistered) {
+        addProtocol("pmtiles", pmtilesProtocol.tile);
+        pmtilesProtocolRegistered = true;
+      }
 
       map = new Map({
         container: mapContainer.current,
@@ -139,16 +97,13 @@ export default function Home() {
         const exact = map?.queryRenderedFeatures([point.x, point.y], { layers: ["countries-fill"] })[0];
         if (exact) return exact;
 
-        const fallback = map?.queryRenderedFeatures([point.x, point.y], { layers: ["country-fallback-fill"] })[0];
-        if (fallback) return fallback;
-
         const radius = 5;
         return map?.queryRenderedFeatures(
           [
             [point.x - radius, point.y - radius],
             [point.x + radius, point.y + radius],
           ],
-          { layers: ["countries-fill", "country-fallback-fill"] },
+          { layers: ["countries-fill"] },
         )[0];
       };
 
@@ -168,7 +123,6 @@ export default function Home() {
             map.setFilter(countryBoundaryLayer, baseBoundaryFilter ?? ["all"]);
           }
           map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
-          map?.setFilter("country-fallback-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
           setSelectedCountry(null);
         };
 
@@ -177,7 +131,6 @@ export default function Home() {
           type: "fill",
           source: "maplibre",
           "source-layer": "countries",
-          minzoom: 3,
           filter: ["==", ["get", "ADM0_A3"], ""],
           paint: {
             "fill-color": mapColors.selectedCountry,
@@ -189,7 +142,6 @@ export default function Home() {
           type: "fill",
           source: "maplibre",
           "source-layer": "countries",
-          minzoom: 3,
           filter: ["==", ["get", "ADM0_A3"], ""],
           paint: { "fill-color": mapColors.neutralLight, "fill-opacity": 0.28 },
         }, "countries-label");
@@ -201,7 +153,6 @@ export default function Home() {
               selectedCountryId.current = "";
               updateCountryBoundary();
               map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
-              map?.setFilter("country-fallback-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
               setSelectedCountry(null);
               return;
             }
@@ -209,13 +160,11 @@ export default function Home() {
             selectedCountryId.current = country.ADM0_A3;
             updateCountryBoundary();
             map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], country.ADM0_A3]);
-            map?.setFilter("country-fallback-selection-fill", ["==", ["get", "ADM0_A3"], country.ADM0_A3]);
             setSelectedCountry(country.NAME);
           } else {
             selectedCountryId.current = "";
             updateCountryBoundary();
             map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
-            map?.setFilter("country-fallback-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
             setSelectedCountry(null);
           }
         });
@@ -226,7 +175,6 @@ export default function Home() {
           if (id !== hoveredCountryId) {
             hoveredCountryId = id;
             map?.setFilter("country-hover-fill", ["==", ["get", "ADM0_A3"], id ?? ""]);
-            map?.setFilter("country-fallback-hover-fill", ["==", ["get", "ADM0_A3"], id ?? ""]);
           }
           map!.getCanvas().style.cursor = id ? "pointer" : "";
         });
@@ -234,7 +182,6 @@ export default function Home() {
         map?.getCanvas().addEventListener("mouseleave", () => {
           hoveredCountryId = undefined;
           map?.setFilter("country-hover-fill", ["==", ["get", "ADM0_A3"], ""]);
-          map?.setFilter("country-fallback-hover-fill", ["==", ["get", "ADM0_A3"], ""]);
           if (map) map.getCanvas().style.cursor = "";
         });
       });
