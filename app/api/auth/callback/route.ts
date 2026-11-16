@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const expectedState = cookieStore.get(spotifyCookies.state)?.value;
   cookieStore.delete(spotifyCookies.state);
 
-  const home = new URL("/", request.url);
+  const home = new URL("/", redirectUri);
   const code = params.get("code");
   const fail = (reason: string) => {
     home.searchParams.set("auth_error", reason);
