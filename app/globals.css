@@ -11,11 +11,63 @@ body {
   margin: 0;
 }
 
-.map-page {
-  position: relative;
-  width: 100%;
+body {
+  display: flex;
+  flex-direction: column;
   height: 100svh;
   min-height: 560px;
+}
+
+.site-header {
+  z-index: 3;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 3.25rem;
+  padding: 0 1.25rem;
+  color: #14271f;
+  background: #fff;
+  border-bottom: 1px solid rgba(20, 39, 31, 0.16);
+  font:
+    0.875rem/1 ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+
+.site-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.auth-button {
+  padding: 0.5rem 0.9rem;
+  color: #fff;
+  background: #1db954;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.spotify-name {
+  display: inline-block;
+  height: 1.1em;
+  margin-left: 0.25em;
+  vertical-align: -0.2em;
+}
+
+.auth-button:hover {
+  background: #1aa34a;
+}
+
+.map-page {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
