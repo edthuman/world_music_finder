@@ -78,3 +78,23 @@ export function storeTokens(cookieStore: CookieStore, tokens: TokenResponse) {
     );
   }
 }
+
+/** Exchanges the stored refresh token for a new access token. Returns false if there is none or it was rejected. */
+export async function refreshAccessToken(cookieStore: CookieStore) {
+  const refreshToken = cookieStore.get(spotifyCookies.refreshToken)?.value;
+  if (!refreshToken) return false;
+
+  const tokens = await requestTokens({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+  if (!tokens) {
+    cookieStore.delete({
+      name: spotifyCookies.refreshToken,
+      path: refreshCookiePath,
+    });
+    return false;
+  }
+  storeTokens(cookieStore, tokens);
+  return true;
+}
