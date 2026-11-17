@@ -1,10 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Map, NavigationControl, AttributionControl, addProtocol, setWorkerUrl, type StyleSpecification } from "maplibre-gl";
+import {
+  Map,
+  NavigationControl,
+  AttributionControl,
+  addProtocol,
+  setWorkerUrl,
+  type StyleSpecification,
+} from "maplibre-gl";
 import { Protocol } from "pmtiles";
 
-setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString());
+setWorkerUrl(
+  new URL(
+    "maplibre-gl/dist/maplibre-gl-worker.mjs",
+    import.meta.url,
+  ).toString(),
+);
 
 const worldStyleUrl = "https://demotiles.maplibre.org/style.json";
 const pmtilesProtocol = new Protocol();
@@ -16,17 +28,22 @@ const mapColors = {
 
 async function loadWorldStyle(): Promise<StyleSpecification> {
   const response = await fetch(worldStyleUrl);
-  if (!response.ok) throw new Error(`Map style request failed: ${response.status}`);
+  if (!response.ok)
+    throw new Error(`Map style request failed: ${response.status}`);
 
   const style = (await response.json()) as StyleSpecification;
   const layers = style.layers
-    .filter((layer) => !["coastline", "geolines", "geolines-label"].includes(layer.id))
+    .filter(
+      (layer) =>
+        !["coastline", "geolines", "geolines-label"].includes(layer.id),
+    )
     .map((layer) => {
       if (["countries-fill", "countries-boundary"].includes(layer.id)) {
         return { ...layer, minzoom: 0 };
       }
 
-      if (layer.id !== "countries-label" || layer.type !== "symbol") return layer;
+      if (layer.id !== "countries-label" || layer.type !== "symbol")
+        return layer;
 
       return {
         ...layer,
@@ -54,7 +71,7 @@ export default function Home() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const selectedCountryId = useRef("");
-  const clearSelection = useRef<() => void>(() => { });
+  const clearSelection = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -82,19 +99,25 @@ export default function Home() {
       let hoveredCountryId: string | undefined;
 
       const findCountry = (point: { x: number; y: number }) => {
-        const label = map?.queryRenderedFeatures([point.x, point.y], { layers: ["countries-label"] })
+        const label = map
+          ?.queryRenderedFeatures([point.x, point.y], {
+            layers: ["countries-label"],
+          })
           .find((feature) => typeof feature.properties?.NAME === "string");
         if (label) {
           const labelName = label.properties?.NAME;
           const labelCountryId = label.properties?.ADM0_A3;
           if (typeof labelCountryId === "string") return label;
 
-          const country = map?.querySourceFeatures("maplibre", { sourceLayer: "countries" })
+          const country = map
+            ?.querySourceFeatures("maplibre", { sourceLayer: "countries" })
             .find((feature) => feature.properties?.NAME === labelName);
           if (country) return country;
         }
 
-        const exact = map?.queryRenderedFeatures([point.x, point.y], { layers: ["countries-fill"] })[0];
+        const exact = map?.queryRenderedFeatures([point.x, point.y], {
+          layers: ["countries-fill"],
+        })[0];
         if (exact) return exact;
 
         const radius = 5;
@@ -113,68 +136,104 @@ export default function Home() {
         const updateCountryBoundary = () => {
           if (!map || !map.getLayer(countryBoundaryLayer)) return;
 
-          map.setFilter(countryBoundaryLayer, selectedCountryId.current
-            ? ["!", ["==", ["get", "ADM0_A3"], selectedCountryId.current]]
-            : baseBoundaryFilter ?? ["all"]);
+          map.setFilter(
+            countryBoundaryLayer,
+            selectedCountryId.current
+              ? ["!", ["==", ["get", "ADM0_A3"], selectedCountryId.current]]
+              : (baseBoundaryFilter ?? ["all"]),
+          );
         };
         clearSelection.current = () => {
           selectedCountryId.current = "";
           if (map?.getLayer(countryBoundaryLayer)) {
             map.setFilter(countryBoundaryLayer, baseBoundaryFilter ?? ["all"]);
           }
-          map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
+          map?.setFilter("country-selection-fill", [
+            "==",
+            ["get", "ADM0_A3"],
+            "",
+          ]);
           setSelectedCountry(null);
         };
 
-        map?.addLayer({
-          id: "country-selection-fill",
-          type: "fill",
-          source: "maplibre",
-          "source-layer": "countries",
-          filter: ["==", ["get", "ADM0_A3"], ""],
-          paint: {
-            "fill-color": mapColors.selectedCountry,
-            "fill-opacity": 0.48,
+        map?.addLayer(
+          {
+            id: "country-selection-fill",
+            type: "fill",
+            source: "maplibre",
+            "source-layer": "countries",
+            filter: ["==", ["get", "ADM0_A3"], ""],
+            paint: {
+              "fill-color": mapColors.selectedCountry,
+              "fill-opacity": 0.48,
+            },
           },
-        }, "countries-label");
-        map?.addLayer({
-          id: "country-hover-fill",
-          type: "fill",
-          source: "maplibre",
-          "source-layer": "countries",
-          filter: ["==", ["get", "ADM0_A3"], ""],
-          paint: { "fill-color": mapColors.hoveredCountry, "fill-opacity": 0.3 },
-        }, "countries-label");
+          "countries-label",
+        );
+        map?.addLayer(
+          {
+            id: "country-hover-fill",
+            type: "fill",
+            source: "maplibre",
+            "source-layer": "countries",
+            filter: ["==", ["get", "ADM0_A3"], ""],
+            paint: {
+              "fill-color": mapColors.hoveredCountry,
+              "fill-opacity": 0.3,
+            },
+          },
+          "countries-label",
+        );
 
         map?.on("click", (event) => {
           const country = findCountry(event.point)?.properties;
-          if (typeof country?.NAME === "string" && typeof country?.ADM0_A3 === "string") {
+          if (
+            typeof country?.NAME === "string" &&
+            typeof country?.ADM0_A3 === "string"
+          ) {
             if (selectedCountryId.current === country.ADM0_A3) {
               selectedCountryId.current = "";
               updateCountryBoundary();
-              map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
+              map?.setFilter("country-selection-fill", [
+                "==",
+                ["get", "ADM0_A3"],
+                "",
+              ]);
               setSelectedCountry(null);
               return;
             }
 
             selectedCountryId.current = country.ADM0_A3;
             updateCountryBoundary();
-            map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], country.ADM0_A3]);
+            map?.setFilter("country-selection-fill", [
+              "==",
+              ["get", "ADM0_A3"],
+              country.ADM0_A3,
+            ]);
             setSelectedCountry(country.NAME);
           } else {
             selectedCountryId.current = "";
             updateCountryBoundary();
-            map?.setFilter("country-selection-fill", ["==", ["get", "ADM0_A3"], ""]);
+            map?.setFilter("country-selection-fill", [
+              "==",
+              ["get", "ADM0_A3"],
+              "",
+            ]);
             setSelectedCountry(null);
           }
         });
 
         map?.on("mousemove", (event) => {
           const country = findCountry(event.point)?.properties;
-          const id = typeof country?.ADM0_A3 === "string" ? country.ADM0_A3 : undefined;
+          const id =
+            typeof country?.ADM0_A3 === "string" ? country.ADM0_A3 : undefined;
           if (id !== hoveredCountryId) {
             hoveredCountryId = id;
-            map?.setFilter("country-hover-fill", ["==", ["get", "ADM0_A3"], id ?? ""]);
+            map?.setFilter("country-hover-fill", [
+              "==",
+              ["get", "ADM0_A3"],
+              id ?? "",
+            ]);
           }
           map!.getCanvas().style.cursor = id ? "pointer" : "";
         });
@@ -186,7 +245,10 @@ export default function Home() {
         });
       });
 
-      map.addControl(new NavigationControl({ showCompass: false }), "bottom-right");
+      map.addControl(
+        new NavigationControl({ showCompass: false }),
+        "bottom-right",
+      );
       map.addControl(new AttributionControl({ compact: true }), "bottom-left");
     });
 
@@ -198,7 +260,11 @@ export default function Home() {
 
   return (
     <main className="map-page">
-      <div ref={mapContainer} className="map-canvas" aria-label="Interactive world map" />
+      <div
+        ref={mapContainer}
+        className="map-canvas"
+        aria-label="Interactive world map"
+      />
       {selectedCountry && (
         <aside className="country-card" aria-live="polite">
           <span>Selected country</span>
