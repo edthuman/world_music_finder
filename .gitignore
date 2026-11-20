@@ -21,3 +21,6 @@ next-env.d.ts
 # Environment files (secrets)
 .env*
 !.env.example
+
+# Claude Code
+.claude/

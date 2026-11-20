@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1795144221191,
+      "tag": "20261120031021_create_playlists_and_tracks",
+      "breakpoints": true
+    }
+  ]
+}
