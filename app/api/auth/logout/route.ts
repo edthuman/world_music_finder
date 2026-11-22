@@ -5,6 +5,7 @@ import { refreshCookiePath, spotifyCookies, spotifyEnv } from "@/lib/spotify";
 export async function POST() {
   const cookieStore = await cookies();
   cookieStore.delete(spotifyCookies.accessToken);
+  cookieStore.delete(spotifyCookies.scope);
   cookieStore.delete({
     name: spotifyCookies.refreshToken,
     path: refreshCookiePath,

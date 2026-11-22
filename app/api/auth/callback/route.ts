@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
   const expectedState = cookieStore.get(spotifyCookies.state)?.value;
   cookieStore.delete(spotifyCookies.state);
+  const returnTo = cookieStore.get(spotifyCookies.returnTo)?.value;
+  cookieStore.delete(spotifyCookies.returnTo);
 
   const home = new URL("/", redirectUri);
   const code = params.get("code");
@@ -34,5 +36,7 @@ export async function GET(request: NextRequest) {
   if (!tokens) return fail("token_exchange_failed");
   storeTokens(cookieStore, tokens);
 
-  return NextResponse.redirect(home);
+  return NextResponse.redirect(
+    returnTo === "/settings" ? new URL("/settings", redirectUri) : home,
+  );
 }

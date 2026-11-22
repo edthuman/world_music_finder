@@ -2,10 +2,18 @@ export const spotifyCookies = {
   state: "spotify_auth_state",
   accessToken: "spotify_access_token",
   refreshToken: "spotify_refresh_token",
+  scope: "spotify_scope",
+  returnTo: "spotify_auth_return_to",
 } as const;
 
-// No scopes yet: enough to identify the user. Add scopes as features need them.
-export const spotifyScopes: string[] = [];
+// Everyone logs in without scopes, which is enough to identify them.
+export const userScopes: string[] = [];
+
+// Admins grant these separately, from the settings page, to manage the playlists.
+export const adminScopes: string[] = [
+  "playlist-modify-private",
+  "playlist-modify-public",
+];
 
 export function spotifyEnv() {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
@@ -45,6 +53,7 @@ type TokenResponse = {
   access_token: string;
   refresh_token?: string;
   expires_in: number;
+  scope?: string;
 };
 
 export async function requestTokens(
@@ -70,6 +79,13 @@ export function storeTokens(cookieStore: CookieStore, tokens: TokenResponse) {
     tokens.access_token,
     accessCookieOptions(tokens.expires_in),
   );
+  if (tokens.scope !== undefined) {
+    cookieStore.set(
+      spotifyCookies.scope,
+      tokens.scope,
+      accessCookieOptions(tokens.expires_in),
+    );
+  }
   if (tokens.refresh_token) {
     cookieStore.set(
       spotifyCookies.refreshToken,
@@ -77,6 +93,14 @@ export function storeTokens(cookieStore: CookieStore, tokens: TokenResponse) {
       refreshCookieOptions,
     );
   }
+}
+
+/** Whether the current token was granted the scopes admins need to manage playlists. */
+export function hasAdminScopes(cookieStore: CookieStore) {
+  const granted = (cookieStore.get(spotifyCookies.scope)?.value ?? "").split(
+    " ",
+  );
+  return adminScopes.every((scope) => granted.includes(scope));
 }
 
 /** Exchanges the stored refresh token for a new access token. Returns false if there is none or it was rejected. */
