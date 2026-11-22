@@ -21,7 +21,7 @@ async function SettingsContent() {
           edited.
         </p>
         <a
-          href="/api/auth/login?scope=admin"
+          href="/api/auth/login?scope=admin&returnTo=/settings"
           className="primary-button primary-link"
         >
           Grant playlist permissions

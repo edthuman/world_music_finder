@@ -35,7 +35,11 @@ export async function GET(request: NextRequest) {
   const state = crypto.randomUUID();
   cookieStore.set(spotifyCookies.state, state, shortLivedCookie);
   if (asAdmin) {
-    cookieStore.set(spotifyCookies.returnTo, "/settings", shortLivedCookie);
+    const returnTo =
+      request.nextUrl.searchParams.get("returnTo") === "/settings"
+        ? "/settings"
+        : "/";
+    cookieStore.set(spotifyCookies.returnTo, returnTo, shortLivedCookie);
   }
 
   const url = new URL("https://accounts.spotify.com/authorize");

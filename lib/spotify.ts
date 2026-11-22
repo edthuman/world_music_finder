@@ -95,12 +95,17 @@ export function storeTokens(cookieStore: CookieStore, tokens: TokenResponse) {
   }
 }
 
+/** Whether a space-separated scope string includes the scopes admins need to manage playlists. */
+export function includesAdminScopes(scope: string) {
+  const granted = scope.split(" ");
+  return adminScopes.every((required) => granted.includes(required));
+}
+
 /** Whether the current token was granted the scopes admins need to manage playlists. */
 export function hasAdminScopes(cookieStore: CookieStore) {
-  const granted = (cookieStore.get(spotifyCookies.scope)?.value ?? "").split(
-    " ",
+  return includesAdminScopes(
+    cookieStore.get(spotifyCookies.scope)?.value ?? "",
   );
-  return adminScopes.every((scope) => granted.includes(scope));
 }
 
 /** Exchanges the stored refresh token for a new access token. Returns false if there is none or it was rejected. */

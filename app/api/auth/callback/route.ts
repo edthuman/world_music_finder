@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
+import { adminUserIdFor } from "@/lib/admin";
 import {
+  includesAdminScopes,
   requestTokens,
   spotifyCookies,
   spotifyEnv,
@@ -35,6 +37,18 @@ export async function GET(request: NextRequest) {
   });
   if (!tokens) return fail("token_exchange_failed");
   storeTokens(cookieStore, tokens);
+
+  // Admins go straight on to grant the playlist permissions, unless they have just done that.
+  const wasAdminLogin = returnTo !== undefined;
+  if (
+    !wasAdminLogin &&
+    !includesAdminScopes(tokens.scope ?? "") &&
+    (await adminUserIdFor(tokens.access_token))
+  ) {
+    return NextResponse.redirect(
+      new URL("/api/auth/login?scope=admin", redirectUri),
+    );
+  }
 
   return NextResponse.redirect(
     returnTo === "/settings" ? new URL("/settings", redirectUri) : home,
