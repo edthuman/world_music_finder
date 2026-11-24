@@ -10,13 +10,8 @@ export async function POST(request: NextRequest) {
   }
 
   const body = (await request.json().catch(() => null)) as {
-    visibility?: unknown;
     regionCodes?: unknown;
   } | null;
-  const visibility = body?.visibility;
-  if (visibility !== "private" && visibility !== "public") {
-    return NextResponse.json({ error: "Invalid visibility" }, { status: 400 });
-  }
   const selected = body?.regionCodes;
   if (
     !Array.isArray(selected) ||
@@ -33,7 +28,6 @@ export async function POST(request: NextRequest) {
     await createRegionPlaylists({
       accessToken: admin.accessToken,
       userId: admin.userId,
-      visibility,
       regionCodes: selected,
     }),
   );

@@ -33,8 +33,8 @@ async function SettingsContent() {
   return (
     <div className="settings-content">
       <p>
-        Creates a Spotify playlist named after each selected region. Regions
-        that already have a saved playlist are skipped.
+        Creates a Spotify playlist named after each selected region that
+        you do not already have a playlist for.
       </p>
       <PlaylistManager regions={regions} />
     </div>

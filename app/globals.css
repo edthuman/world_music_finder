@@ -267,38 +267,6 @@ body:has(.settings-page) .icon-button:hover {
   font: inherit;
 }
 
-.visibility-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-left: auto;
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.segmented {
-  display: inline-flex;
-  padding: 2px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-}
-
-.segmented button {
-  padding: 0.35rem 0.9rem;
-  color: var(--muted);
-  background: transparent;
-  border: 0;
-  border-radius: 999px;
-  font: inherit;
-  cursor: pointer;
-}
-
-.segmented button[aria-pressed="true"] {
-  color: #fff;
-  background: var(--accent);
-}
-
 .region-box {
   min-height: 8rem;
   overflow-y: auto;

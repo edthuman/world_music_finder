@@ -3,20 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Region } from "@/lib/regions";
 
-type Visibility = "private" | "public";
-
 type Result = {
   created?: string[];
-  skipped?: string[];
+  existing?: string[];
   failure?: { regionCode?: string; status: number; message: string };
   error?: string;
 };
 
-const visibilities: Visibility[] = ["private", "public"];
-
 function describe(result: Result) {
   if (result.error) return `${result.error}.`;
-  const summary = `Created ${result.created?.length ?? 0}, skipped ${result.skipped?.length ?? 0} already saved.`;
+  const summary = `Created ${result.created?.length ?? 0}, skipped ${result.existing?.length ?? 0} to avoid duplicate playlists.`;
   if (!result.failure) return summary;
   const { regionCode, message, status } = result.failure;
   return `${summary} Stopped${regionCode ? ` at ${regionCode}` : ""}: ${message} (${status}). If this is a permissions error, log out and back in.`;
@@ -26,7 +22,6 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
   const allToggle = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [visibility, setVisibility] = useState<Visibility>("private");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -84,7 +79,7 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
       const response = await fetch("/api/admin/playlists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visibility, regionCodes: [...selected] }),
+        body: JSON.stringify({ regionCodes: [...selected] }),
       });
       setToast(describe((await response.json()) as Result));
     } catch {
@@ -108,24 +103,6 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <div className="visibility-toggle">
-            <div
-              className="segmented"
-              role="group"
-              aria-label="Visibility of new playlists"
-            >
-              {visibilities.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={visibility === option}
-                  onClick={() => setVisibility(option)}
-                >
-                  {option === "private" ? "Private" : "Public"}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="region-box">
