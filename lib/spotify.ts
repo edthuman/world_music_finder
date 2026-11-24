@@ -13,6 +13,10 @@ export const userScopes: string[] = [];
 export const adminScopes: string[] = [
   "playlist-modify-private",
   "playlist-modify-public",
+  // Needed to check whether saved playlists are still in the user's library.
+  "user-library-read",
+  "user-follow-read",
+  "playlist-read-private",
 ];
 
 export function spotifyEnv() {

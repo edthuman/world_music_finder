@@ -5,6 +5,7 @@ import type { Region } from "@/lib/regions";
 
 type Result = {
   created?: string[];
+  replaced?: string[];
   existing?: string[];
   failure?: { regionCode?: string; status: number; message: string };
   error?: string;
@@ -12,8 +13,18 @@ type Result = {
 
 function describe(result: Result) {
   if (result.error) return `${result.error}.`;
-  const summary = `Created ${result.created?.length ?? 0}, skipped ${result.existing?.length ?? 0} to avoid duplicate playlists.`;
+
+  const created =
+    (result.created?.length ?? 0) + (result.replaced?.length ?? 0);
+  const skipped = result.existing?.length ?? 0;
+  const summary =
+    created > 0
+      ? `Created ${created} ${created === 1 ? "playlist" : "playlists"}${skipped > 0 ? " (skipped playlists that already exist)" : ""}.`
+      : skipped > 0 && !result.failure
+        ? "No playlists created - all already exist in your Spotify account."
+        : "No playlists created.";
   if (!result.failure) return summary;
+
   const { regionCode, message, status } = result.failure;
   return `${summary} Stopped${regionCode ? ` at ${regionCode}` : ""}: ${message} (${status}). If this is a permissions error, log out and back in.`;
 }
