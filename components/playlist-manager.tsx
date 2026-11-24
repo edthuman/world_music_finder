@@ -164,7 +164,15 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
 
       {toast && (
         <div className="toast" role="status">
-          {toast}
+          <span>{toast}</span>
+          <button
+            type="button"
+            className="toast-close"
+            aria-label="Dismiss"
+            onClick={() => setToast(null)}
+          >
+            &times;
+          </button>
         </div>
       )}
     </>
