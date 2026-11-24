@@ -59,11 +59,13 @@ async function failureFrom(
   const body = (await response.json().catch(() => null)) as {
     error?: { message?: string };
   } | null;
-  return {
+  const failure = {
     regionCode,
     status: response.status,
     message: body?.error?.message ?? response.statusText,
   };
+  console.error("Spotify request failed", failure);
+  return failure;
 }
 
 /** Which of the given playlists are still in the user's Spotify library. A deleted playlist is not. */
@@ -87,6 +89,9 @@ async function playlistsInLibrary(accessToken: string, playlistIds: string[]) {
 
     const results = (await response.json()) as boolean[];
     if (results.length !== batch.length) {
+      console.error(
+        `Library check returned ${results.length} results for ${batch.length} playlists`,
+      );
       return {
         failure: {
           status: 502,

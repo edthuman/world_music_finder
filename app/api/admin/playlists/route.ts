@@ -24,11 +24,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(
-    await createRegionPlaylists({
-      accessToken: admin.accessToken,
-      userId: admin.userId,
-      regionCodes: selected,
-    }),
-  );
+  try {
+    return NextResponse.json(
+      await createRegionPlaylists({
+        accessToken: admin.accessToken,
+        userId: admin.userId,
+        regionCodes: selected,
+      }),
+    );
+  } catch (error) {
+    console.error("Could not create region playlists", error);
+    return NextResponse.json(
+      { error: "Something went wrong creating the playlists" },
+      { status: 500 },
+    );
+  }
 }
