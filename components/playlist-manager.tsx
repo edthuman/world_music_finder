@@ -25,8 +25,8 @@ function describe(result: Result) {
         : "No playlists created.";
   if (!result.failure) return summary;
 
-  const { regionCode, message, status } = result.failure;
-  return `${summary} Stopped${regionCode ? ` at ${regionCode}` : ""}: ${message} (${status}). If this is a permissions error, log out and back in.`;
+  const { regionCode } = result.failure;
+  return `${summary} Stopped${regionCode ? ` at ${regionCode}` : ""} because something went wrong. Try again, or log out and back in if it keeps happening.`;
 }
 
 export default function PlaylistManager({ regions }: { regions: Region[] }) {
