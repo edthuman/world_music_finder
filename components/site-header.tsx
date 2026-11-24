@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { cookies } from "next/headers";
+import HideOnSettings from "@/components/hide-on-settings";
 import SettingsIcon from "@/components/settings-icon";
 import SiteTitle from "@/components/site-title";
 import SpotifyName from "@/components/spotify-name";
@@ -22,9 +23,11 @@ async function AuthButton() {
 
   return loggedIn ? (
     <div className="auth-actions">
-      <Suspense>
-        <SettingsLink />
-      </Suspense>
+      <HideOnSettings>
+        <Suspense>
+          <SettingsLink />
+        </Suspense>
+      </HideOnSettings>
       <form action="/api/auth/logout" method="post">
         <button type="submit" className="auth-button">
           Log out
