@@ -48,7 +48,17 @@ export default function SettingsPage() {
       <Link href="/" className="back-link">
         &larr; Back to map
       </Link>
-      <Suspense>
+      <Suspense
+        fallback={
+          <div
+            className="settings-content settings-loading"
+            role="status"
+            aria-label="Loading"
+          >
+            <span className="settings-spinner" />
+          </div>
+        }
+      >
         <SettingsContent />
       </Suspense>
     </main>
