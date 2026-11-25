@@ -15,6 +15,9 @@ type Result = {
   created?: string[];
   replaced?: string[];
   existing?: string[];
+  imported?: string[];
+  unchanged?: string[];
+  noPlaylist?: string[];
   failure?: { regionCode?: string; status: number; message: string };
   error?: string;
 };
@@ -26,10 +29,23 @@ type Action = {
   busyLabel: string;
   confirmLabel: (selected: Region[]) => string;
   endpoint: string;
-  describe: (result: Result) => string;
+  describe: (result: Result, regions: Region[]) => string;
 };
 
-function describeCreate(result: Result) {
+function withFailure(
+  summary: string,
+  failure: Result["failure"],
+  regions: Region[],
+) {
+  if (!failure) return summary;
+
+  const name = regions.find(
+    (region) => region.code === failure.regionCode,
+  )?.name;
+  return `${summary} Stopped${name ? ` at ${name}` : ""} because something went wrong. Try again, or log out and back in if it keeps happening.`;
+}
+
+function describeCreate(result: Result, regions: Region[]) {
   if (result.error) return `${result.error}.`;
 
   const created =
@@ -41,10 +57,25 @@ function describeCreate(result: Result) {
       : skipped > 0 && !result.failure
         ? "No playlists created - all already exist in your Spotify account."
         : "No playlists created.";
-  if (!result.failure) return summary;
+  return withFailure(summary, result.failure, regions);
+}
 
-  const { regionCode } = result.failure;
-  return `${summary} Stopped${regionCode ? ` at ${regionCode}` : ""} because something went wrong. Try again, or log out and back in if it keeps happening.`;
+function describeImport(result: Result, regions: Region[]) {
+  if (result.error) return `${result.error}.`;
+
+  const updated = result.imported?.length ?? 0;
+  const skipped = (
+    [
+      [result.unchanged?.length ?? 0, "without changes"],
+      [result.noPlaylist?.length ?? 0, "without a playlist"],
+    ] as [number, string][]
+  )
+    .filter(([count]) => count > 0)
+    .map(([count, reason]) => `${count} ${reason}`);
+  const summary = `${updated === 0 ? "No" : updated} region ${updated === 1 ? "playlist" : "playlists"} updated${skipped.length > 0 ? ` (skipped ${skipped.join(", ")})` : ""}`;
+  return result.failure
+    ? withFailure(`${summary}.`, result.failure, regions)
+    : summary;
 }
 
 const actions: Action[] = [
@@ -62,6 +93,21 @@ const actions: Action[] = [
           : `Create playlists for ${selected.length} regions`,
     endpoint: "/api/admin/playlists",
     describe: describeCreate,
+  },
+  {
+    id: "import",
+    label: "Import songs",
+    description:
+      "Saves the songs in each selected region's playlists so they can be shown on the map, and removes saved songs you have taken out of a playlist. Regions whose playlists have not changed since the last import are skipped.",
+    busyLabel: "Importing songs...",
+    confirmLabel: (selected) =>
+      selected.length === 0
+        ? "Import songs"
+        : selected.length === 1
+          ? `Import songs for ${selected[0].name}`
+          : `Import songs for ${selected.length} regions`,
+    endpoint: "/api/admin/tracks",
+    describe: describeImport,
   },
 ];
 
@@ -87,6 +133,7 @@ export default function PlaylistManager({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [alert, setAlert] = useState<string | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -140,16 +187,20 @@ export default function PlaylistManager({
 
   async function run() {
     setBusy(true);
+    setAlert(null);
     try {
       const response = await fetch(action.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ regionCodes: [...selected] }),
       });
-      setToast(action.describe((await response.json()) as Result));
+      const result = (await response.json()) as Result;
+      const message = action.describe(result, regions);
+      if (result.error || result.failure) setAlert(message);
+      else setToast(message);
       router.refresh();
     } catch {
-      setToast("Could not reach the server.");
+      setAlert("Could not reach the server.");
     } finally {
       setBusy(false);
     }
@@ -262,6 +313,23 @@ export default function PlaylistManager({
           </ul>
         </div>
       </div>
+
+      {alert && (
+        <div
+          className="mb-3 flex flex-none items-center gap-3 rounded-lg border border-danger-edge bg-danger-surface px-4 py-[0.8rem] text-sm/[1.4] text-danger"
+          role="alert"
+        >
+          <span className="min-w-0">{alert}</span>
+          <button
+            type="button"
+            className="ml-auto flex-none cursor-pointer p-0 text-[1.25rem] leading-none opacity-85 hover:opacity-100"
+            aria-label="Dismiss"
+            onClick={() => setAlert(null)}
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       <button
         type="button"
