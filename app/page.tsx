@@ -259,18 +259,22 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="map-page">
+    <main className="relative min-h-0 w-full flex-1 overflow-hidden">
       <div
         ref={mapContainer}
-        className="map-canvas"
+        className="absolute inset-0 z-0"
         aria-label="Interactive world map"
       />
       {selectedCountry && (
-        <aside className="country-card" aria-live="polite">
-          <span>Selected country</span>
-          <strong>{selectedCountry}</strong>
+        <aside
+          className="absolute top-5 left-5 z-2 grid min-w-48 gap-1 rounded-[0.4rem] border border-ink/16 bg-white/94 py-[0.9rem] pr-11 pl-4 font-sans text-xs/[1.3] text-ink shadow-[0_3px_14px_rgba(20,39,31,0.14)]"
+          aria-live="polite"
+        >
+          <span className="text-ink-muted">Selected country</span>
+          <strong className="text-[1rem]">{selectedCountry}</strong>
           <button
             type="button"
+            className="absolute top-2 right-[0.6rem] cursor-pointer text-[1.25rem]"
             aria-label="Clear selected country"
             onClick={() => {
               clearSelection.current();
