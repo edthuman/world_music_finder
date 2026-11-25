@@ -4,6 +4,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -34,13 +35,22 @@ export const tracks = pgTable(
   "tracks",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    spotifyTrackId: text("spotify_track_id").notNull().unique(),
+    spotifyTrackId: text("spotify_track_id").notNull(),
     regionCode: text("region_code").notNull(),
+    name: text("name").notNull(),
+    artists: text("artists").notNull(),
     isrc: text("isrc"),
     explicit: boolean("explicit").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("tracks_region_code_idx").on(table.regionCode)],
+  // A song can be saved for several regions, but only once per region
+  (table) => [
+    unique("tracks_region_spotify_track_unique").on(
+      table.regionCode,
+      table.spotifyTrackId,
+    ),
+    unique("tracks_region_isrc_unique").on(table.regionCode, table.isrc),
+  ],
 );

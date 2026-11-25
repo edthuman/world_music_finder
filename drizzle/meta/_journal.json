@@ -15,6 +15,13 @@
       "when": 1795483332160,
       "tag": "20261124012212_allow_multiple_playlists_per_region",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795647291175,
+      "tag": "20261125225451_track_names_and_per_region_uniqueness",
+      "breakpoints": true
     }
   ]
 }
