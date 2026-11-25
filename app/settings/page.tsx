@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import PlaylistManager from "@/components/playlist-manager";
 import { getAdmin } from "@/lib/admin";
+import { getRegionStatuses } from "@/lib/region-status";
 import { regions } from "@/lib/regions";
 import { hasAdminScopes } from "@/lib/spotify";
 
@@ -12,7 +13,8 @@ const contentClass =
 const paragraphClass = "mb-4 flex-none text-fg-muted";
 
 async function SettingsContent() {
-  if (!(await getAdmin())) redirect("/");
+  const admin = await getAdmin();
+  if (!admin) redirect("/");
 
   if (!hasAdminScopes(await cookies())) {
     return (
@@ -36,7 +38,10 @@ async function SettingsContent() {
 
   return (
     <div className={contentClass}>
-      <PlaylistManager regions={regions} />
+      <PlaylistManager
+        regions={regions}
+        statuses={await getRegionStatuses(admin.userId)}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   useEffect,
   useMemo,
@@ -7,6 +8,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
+import type { RegionStatus } from "@/lib/region-status";
 import type { Region } from "@/lib/regions";
 
 type Result = {
@@ -63,10 +65,22 @@ const actions: Action[] = [
   },
 ];
 
+function songsText(status?: RegionStatus) {
+  if (!status || status.playlists === 0) return "No playlist";
+  return `${status.tracks} ${status.tracks === 1 ? "song" : "songs"}`;
+}
+
 const itemClass =
   "flex cursor-pointer items-center gap-[0.7rem] px-[0.9rem] py-[0.55rem] text-[1.05rem]";
 
-export default function PlaylistManager({ regions }: { regions: Region[] }) {
+export default function PlaylistManager({
+  regions,
+  statuses,
+}: {
+  regions: Region[];
+  statuses: Record<string, RegionStatus>;
+}) {
+  const router = useRouter();
   const allToggle = useRef<HTMLInputElement>(null);
   const [actionId, setActionId] = useState(actions[0].id);
   const [query, setQuery] = useState("");
@@ -133,6 +147,7 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
         body: JSON.stringify({ regionCodes: [...selected] }),
       });
       setToast(action.describe((await response.json()) as Result));
+      router.refresh();
     } catch {
       setToast("Could not reach the server.");
     } finally {
@@ -234,9 +249,9 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
                     checked={selected.has(region.code)}
                     onChange={() => toggle(region.code)}
                   />
-                  <span>{region.name}</span>
-                  <span className="ml-auto text-[0.75rem] text-fg-faint">
-                    {region.code}
+                  <span className="min-w-0 truncate">{region.name}</span>
+                  <span className="ml-auto flex-none text-[0.75rem] text-fg-faint">
+                    {songsText(statuses[region.code])}
                   </span>
                 </label>
               </li>
