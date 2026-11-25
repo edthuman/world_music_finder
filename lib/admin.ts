@@ -10,8 +10,8 @@ function adminUserIds() {
 }
 
 /**
- * Returns the Spotify user ID that an access token belongs to if they are an admin, otherwise null.
- * The ID always comes from Spotify's `/me`, never from a cookie, so it can't be forged from the browser.
+ * Returns the user ID for an access token if they are an admin, otherwise null. The ID comes from
+ * Spotify's `/me`, never a cookie, so it can't be forged.
  */
 export async function adminUserIdFor(accessToken: string) {
   const response = await fetch("https://api.spotify.com/v1/me", {

@@ -28,9 +28,8 @@ type CreatedPlaylist = {
 const description = "Created by World Music Finder";
 
 /**
- * Creates a private playlist named after each selected region where the user has no saved playlist still
- * in their Spotify library, and saves it to the database. Deleted playlists stay saved as history. Other
- * admins' playlists don't count. Stops at the first failure.
+ * Creates a private playlist for each selected region the user has no live playlist for, and saves it to
+ * the database. Stops at the first failure.
  */
 export async function createRegionPlaylists({
   accessToken,

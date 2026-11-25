@@ -185,7 +185,7 @@ async function saveRegionSongs(
   });
 }
 
-/** Saves the songs in each selected region's playlists, and deletes saved songs no longer in them. Stops at the first failure. */
+/** Saves the songs in each selected region's playlists, and deletes ones no longer in them. Stops at the first failure. */
 export async function importRegionTracks({
   accessToken,
   userId,
