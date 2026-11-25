@@ -36,11 +36,6 @@ async function SettingsContent() {
 
   return (
     <div className={contentClass}>
-      <p className={paragraphClass}>
-        Creates a Spotify playlist named after each selected region that you do
-        not already have a playlist for. If a playlist has been deleted, a new
-        one will be created.
-      </p>
       <PlaylistManager regions={regions} />
     </div>
   );

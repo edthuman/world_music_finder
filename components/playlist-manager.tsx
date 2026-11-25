@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import type { Region } from "@/lib/regions";
 
 type Result = {
@@ -11,7 +17,17 @@ type Result = {
   error?: string;
 };
 
-function describe(result: Result) {
+type Action = {
+  id: string;
+  label: string;
+  description: string;
+  busyLabel: string;
+  confirmLabel: (selected: Region[]) => string;
+  endpoint: string;
+  describe: (result: Result) => string;
+};
+
+function describeCreate(result: Result) {
   if (result.error) return `${result.error}.`;
 
   const created =
@@ -29,11 +45,30 @@ function describe(result: Result) {
   return `${summary} Stopped${regionCode ? ` at ${regionCode}` : ""} because something went wrong. Try again, or log out and back in if it keeps happening.`;
 }
 
+const actions: Action[] = [
+  {
+    id: "create",
+    label: "Create playlists",
+    description:
+      "Creates a Spotify playlist named after each selected region that you do not already have a playlist for. If a playlist has been deleted, a new one will be created.",
+    busyLabel: "Creating playlists...",
+    confirmLabel: (selected) =>
+      selected.length === 0
+        ? "Create playlists"
+        : selected.length === 1
+          ? `Create playlist for ${selected[0].name}`
+          : `Create playlists for ${selected.length} regions`,
+    endpoint: "/api/admin/playlists",
+    describe: describeCreate,
+  },
+];
+
 const itemClass =
   "flex cursor-pointer items-center gap-[0.7rem] px-[0.9rem] py-[0.55rem] text-[1.05rem]";
 
 export default function PlaylistManager({ regions }: { regions: Region[] }) {
   const allToggle = useRef<HTMLInputElement>(null);
+  const [actionId, setActionId] = useState(actions[0].id);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -87,15 +122,17 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
     });
   }
 
-  async function create() {
+  const action = actions.find((candidate) => candidate.id === actionId)!;
+
+  async function run() {
     setBusy(true);
     try {
-      const response = await fetch("/api/admin/playlists", {
+      const response = await fetch(action.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ regionCodes: [...selected] }),
       });
-      setToast(describe((await response.json()) as Result));
+      setToast(action.describe((await response.json()) as Result));
     } catch {
       setToast("Could not reach the server.");
     } finally {
@@ -103,10 +140,58 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
     }
   }
 
+  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    const index = actions.findIndex((candidate) => candidate.id === actionId);
+    const next = actions[(index + step + actions.length) % actions.length];
+    setActionId(next.id);
+    document.getElementById(`action-tab-${next.id}`)?.focus();
+  }
+
   const count = selected.size;
+  const confirmLabel = action.confirmLabel(
+    regions.filter((region) => selected.has(region.code)),
+  );
 
   return (
     <>
+      <div
+        role="tablist"
+        aria-label="Action"
+        className="mb-3 flex flex-none gap-1 border-b border-edge"
+      >
+        {actions.map((candidate) => {
+          const active = candidate.id === actionId;
+          return (
+            <button
+              key={candidate.id}
+              id={`action-tab-${candidate.id}`}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-controls="action-panel"
+              tabIndex={active ? 0 : -1}
+              disabled={busy}
+              className={`-mb-px cursor-pointer border-b-2 px-3 py-2 font-semibold disabled:cursor-not-allowed ${active ? "border-accent text-fg" : "border-transparent text-fg-muted enabled:hover:text-fg"}`}
+              onClick={() => setActionId(candidate.id)}
+              onKeyDown={onTabKeyDown}
+            >
+              {candidate.label}
+            </button>
+          );
+        })}
+      </div>
+      <p
+        id="action-panel"
+        role="tabpanel"
+        aria-labelledby={`action-tab-${action.id}`}
+        className="mb-4 flex-none text-fg-muted"
+      >
+        {action.description}
+      </p>
+
       <div className="mb-5 grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3">
         <div className="flex flex-wrap items-center gap-4">
           <input
@@ -167,11 +252,9 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
         type="button"
         className="w-full flex-none cursor-pointer rounded-lg bg-accent px-4 py-3 font-semibold text-white enabled:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45"
         disabled={busy || count === 0}
-        onClick={() => void create()}
+        onClick={() => void run()}
       >
-        {busy
-          ? "Creating playlists..."
-          : `Create playlists${count > 0 ? ` (${count})` : ""}`}
+        {busy ? action.busyLabel : confirmLabel}
       </button>
 
       {toast && (
