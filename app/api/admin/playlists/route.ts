@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAdmin } from "@/lib/admin";
 import { createRegionPlaylists } from "@/lib/playlists";
-import { regionCodes } from "@/lib/regions";
+import { parseRegionCodes } from "@/lib/regions";
 
 export async function POST(request: NextRequest) {
   const admin = await getAdmin();
@@ -12,12 +12,8 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as {
     regionCodes?: unknown;
   } | null;
-  const selected = body?.regionCodes;
-  if (
-    !Array.isArray(selected) ||
-    selected.length === 0 ||
-    !selected.every((code) => typeof code === "string" && regionCodes.has(code))
-  ) {
+  const selected = parseRegionCodes(body?.regionCodes);
+  if (!selected) {
     return NextResponse.json(
       { error: "Select at least one valid region" },
       { status: 400 },
