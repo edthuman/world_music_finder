@@ -29,6 +29,9 @@ function describe(result: Result) {
   return `${summary} Stopped${regionCode ? ` at ${regionCode}` : ""} because something went wrong. Try again, or log out and back in if it keeps happening.`;
 }
 
+const itemClass =
+  "flex cursor-pointer items-center gap-[0.7rem] px-[0.9rem] py-[0.55rem] text-[1.05rem]";
+
 export default function PlaylistManager({ regions }: { regions: Region[] }) {
   const allToggle = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -104,11 +107,11 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
 
   return (
     <>
-      <div className="region-picker">
-        <div className="region-controls">
+      <div className="mb-5 grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3">
+        <div className="flex flex-wrap items-center gap-4">
           <input
             type="search"
-            className="region-search"
+            className="flex-[1_1_12rem] rounded-lg border border-edge bg-surface px-[0.8rem] py-[0.55rem] text-fg"
             placeholder="Search regions"
             aria-label="Search regions"
             value={query}
@@ -116,36 +119,45 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
           />
         </div>
 
-        <div className="region-box">
-          <label className="region-item region-all">
+        <div className="min-h-32 overflow-y-auto rounded-lg border border-edge bg-surface">
+          <label
+            className={`${itemClass} sticky top-0 z-1 border-b border-edge bg-surface-raised font-semibold`}
+          >
             <input
               ref={allToggle}
+              className="size-[1.15rem] accent-accent"
               type="checkbox"
               checked={allVisibleSelected}
               disabled={visible.length === 0}
               onChange={toggleAllVisible}
             />
             <span>{query.trim() ? "All shown regions" : "All regions"}</span>
-            <span className="region-count" aria-live="polite">
+            <span
+              className="ml-auto text-[0.85rem] font-normal text-fg-muted"
+              aria-live="polite"
+            >
               {count} of {regions.length} selected
             </span>
           </label>
-          <ul className="region-list">
+          <ul>
             {visible.map((region) => (
               <li key={region.code}>
-                <label className="region-item">
+                <label className={`${itemClass} hover:bg-fg/5`}>
                   <input
                     type="checkbox"
+                    className="size-[1.15rem] accent-accent"
                     checked={selected.has(region.code)}
                     onChange={() => toggle(region.code)}
                   />
                   <span>{region.name}</span>
-                  <span className="region-code">{region.code}</span>
+                  <span className="ml-auto text-[0.75rem] text-fg-faint">
+                    {region.code}
+                  </span>
                 </label>
               </li>
             ))}
             {visible.length === 0 && (
-              <li className="region-empty">No regions match.</li>
+              <li className="p-[0.9rem] text-fg-muted">No regions match.</li>
             )}
           </ul>
         </div>
@@ -153,7 +165,7 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
 
       <button
         type="button"
-        className="primary-button"
+        className="w-full flex-none cursor-pointer rounded-lg bg-accent px-4 py-3 font-semibold text-white enabled:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45"
         disabled={busy || count === 0}
         onClick={() => void create()}
       >
@@ -163,11 +175,14 @@ export default function PlaylistManager({ regions }: { regions: Region[] }) {
       </button>
 
       {toast && (
-        <div className="toast" role="status">
+        <div
+          className="fixed right-5 bottom-5 z-10 flex max-w-96 items-start gap-3 rounded-lg border border-edge bg-surface px-4 py-[0.8rem] font-sans text-sm/[1.4] text-fg shadow-[0_6px_20px_rgba(18,48,79,0.16)]"
+          role="status"
+        >
           <span>{toast}</span>
           <button
             type="button"
-            className="toast-close"
+            className="flex-none cursor-pointer p-0 text-[1.25rem] leading-none opacity-60 hover:opacity-100"
             aria-label="Dismiss"
             onClick={() => setToast(null)}
           >

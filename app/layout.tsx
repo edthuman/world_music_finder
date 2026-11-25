@@ -9,8 +9,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full">
+    <html
+      lang="en"
+      className="h-full has-[.settings-page]:scheme-light has-[.settings-page]:bg-page"
+    >
+      <body className="flex h-svh min-h-[560px] flex-col has-[.settings-page]:scheme-light has-[.settings-page]:bg-page">
         <SiteHeader />
         {children}
       </body>
