@@ -96,7 +96,7 @@ const actions: Action[] = [
     id: "import",
     label: "Import songs",
     description:
-      "Saves the songs in each selected region's playlists so they can be shown on the map, and removes saved songs you have taken out of a playlist. Regions whose playlists have not changed since the last import are skipped.",
+      "Saves the songs from each selected region's playlists into the database. Saved songs no longer in the playlist are deleted. Skips regions whose playlists have not changed since the last import.",
     busyLabel: "Importing songs...",
     confirmLabel: (selected) =>
       selected.length === 0
