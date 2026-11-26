@@ -42,7 +42,7 @@ function withFailure(
   const name = regions.find(
     (region) => region.code === failure.regionCode,
   )?.name;
-  return `${summary} Stopped${name ? ` at ${name}` : ""} because something went wrong. Try again, or log out and back in if it keeps happening.`;
+  return `${summary}. Stopped${name ? ` at ${name}` : ""} because something went wrong. Try again, or log out and back in if it keeps happening.`;
 }
 
 function describeCreate(result: Result, regions: Region[]) {
@@ -53,10 +53,10 @@ function describeCreate(result: Result, regions: Region[]) {
   const skipped = result.existing?.length ?? 0;
   const summary =
     created > 0
-      ? `Created ${created} ${created === 1 ? "playlist" : "playlists"}${skipped > 0 ? " (skipped playlists that already exist)" : ""}.`
+      ? `Created ${created} ${created === 1 ? "playlist" : "playlists"}${skipped > 0 ? " (skipped playlists that already exist)" : ""}`
       : skipped > 0 && !result.failure
-        ? "No playlists created - all already exist in your Spotify account."
-        : "No playlists created.";
+        ? "No playlists created - all already exist in your Spotify account"
+        : "No playlists created";
   return withFailure(summary, result.failure, regions);
 }
 
@@ -73,9 +73,7 @@ function describeImport(result: Result, regions: Region[]) {
     .filter(([count]) => count > 0)
     .map(([count, reason]) => `${count} ${reason}`);
   const summary = `${updated === 0 ? "No" : updated} region ${updated === 1 ? "playlist" : "playlists"} updated${skipped.length > 0 ? ` (skipped ${skipped.join(", ")})` : ""}`;
-  return result.failure
-    ? withFailure(`${summary}.`, result.failure, regions)
-    : summary;
+  return withFailure(summary, result.failure, regions);
 }
 
 const actions: Action[] = [
