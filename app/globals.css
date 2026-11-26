@@ -35,6 +35,9 @@
   --color-fg-faint: var(--faint);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-edge: var(--danger-border);
 }
 
 html:has(.settings-page) {
@@ -47,6 +50,9 @@ html:has(.settings-page) {
   --faint: #7690a7;
   --accent: #1479b0;
   --accent-hover: #0f6797;
+  --danger: #9b1c1c;
+  --danger-surface: #fdeeee;
+  --danger-border: rgba(155, 28, 28, 0.3);
 }
 
 .maplibregl-canvas {
