@@ -109,6 +109,41 @@ const actions: Action[] = [
   },
 ];
 
+type Session = {
+  action: Action;
+  /** Region codes not yet processed, in the order the server handles them. */
+  remaining: string[];
+  total: number;
+  /** Regions the user chose to skip after they failed. */
+  skipped: string[];
+  /** Everything the server has reported so far. */
+  result: Result;
+};
+
+type Phase = "idle" | "running" | "paused" | "stopped";
+
+const batchSize = 10;
+const maxSkippedNames = 3;
+const listKeys = [
+  "created",
+  "replaced",
+  "existing",
+  "imported",
+  "unchanged",
+  "noPlaylist",
+] as const;
+
+/** Adds the lists from a later batch to those so far. Only the latest batch's failure counts. */
+function mergeResults(total: Result, next: Result): Result {
+  const merged: Result = { failure: next.failure, error: next.error };
+  for (const key of listKeys) {
+    if (total[key] || next[key]) {
+      merged[key] = [...(total[key] ?? []), ...(next[key] ?? [])];
+    }
+  }
+  return merged;
+}
+
 function songsText(status?: RegionStatus) {
   if (!status || status.playlists === 0) return "No playlist";
   return `${status.tracks} ${status.tracks === 1 ? "song" : "songs"}`;
@@ -116,6 +151,10 @@ function songsText(status?: RegionStatus) {
 
 const itemClass =
   "flex cursor-pointer items-center gap-[0.7rem] px-[0.9rem] py-[0.55rem] text-[1.05rem]";
+const primaryButtonClass =
+  "cursor-pointer rounded-lg bg-accent px-4 py-3 font-semibold text-white enabled:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45";
+const secondaryButtonClass =
+  "cursor-pointer rounded-lg border border-edge bg-surface px-4 py-3 font-semibold text-fg enabled:hover:bg-fg/6 disabled:cursor-not-allowed disabled:opacity-45";
 
 export default function PlaylistManager({
   regions,
@@ -129,7 +168,10 @@ export default function PlaylistManager({
   const [actionId, setActionId] = useState(actions[0].id);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [pausing, setPausing] = useState(false);
+  const pauseRequested = useRef(false);
   const [toast, setToast] = useState<string | null>(null);
   const [alert, setAlert] = useState<string | null>(null);
 
@@ -183,25 +225,122 @@ export default function PlaylistManager({
 
   const action = actions.find((candidate) => candidate.id === actionId)!;
 
-  async function run() {
-    setBusy(true);
+  /** Sends the session's remaining regions in batches, until it finishes, is paused, or a batch fails. */
+  async function process(start: Session) {
+    const { action } = start;
+    let { remaining } = start;
+    // A failure from before is either resolved by trying again, or skipped.
+    let result: Result = {
+      ...start.result,
+      failure: undefined,
+      error: undefined,
+    };
+    pauseRequested.current = false;
+    setPausing(false);
     setAlert(null);
-    try {
-      const response = await fetch(action.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ regionCodes: [...selected] }),
-      });
-      const result = (await response.json()) as Result;
-      const message = action.describe(result, regions);
-      if (result.error || result.failure) setAlert(message);
-      else setToast(message);
+    setSession(start);
+    setPhase("running");
+
+    while (remaining.length > 0) {
+      const batch = remaining.slice(0, batchSize);
+      let next: Result;
+      try {
+        const response = await fetch(action.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ regionCodes: batch }),
+        });
+        next = (await response.json()) as Result;
+      } catch {
+        setSession({ ...start, remaining, result });
+        setAlert("Could not reach the server.");
+        setPhase("stopped");
+        return;
+      }
+
+      result = mergeResults(result, next);
       router.refresh();
-    } catch {
-      setAlert("Could not reach the server.");
-    } finally {
-      setBusy(false);
+
+      if (next.error || next.failure) {
+        // Resume from the region that failed. Without one, nothing in the batch was handled.
+        const failedAt = remaining.indexOf(next.failure?.regionCode ?? "");
+        remaining = remaining.slice(Math.max(failedAt, 0));
+        setSession({ ...start, remaining, result });
+        setAlert(action.describe(result, regions));
+        setPhase("stopped");
+        return;
+      }
+
+      remaining = remaining.slice(batch.length);
+      setSession({ ...start, remaining, result });
+      if (pauseRequested.current && remaining.length > 0) {
+        setPhase("paused");
+        return;
+      }
     }
+
+    setSession(null);
+    setPhase("idle");
+    report(action, result, start.skipped);
+  }
+
+  /** The toast says what worked, and the alert, if anything was skipped, says which regions weren't. */
+  function report(action: Action, result: Result, skipped: string[]) {
+    setToast(
+      action.describe(
+        { ...result, failure: undefined, error: undefined },
+        regions,
+      ),
+    );
+    setAlert(skipped.length > 0 ? skippedMessage(skipped) : null);
+  }
+
+  function skippedMessage(codes: string[]) {
+    const names = codes.map(
+      (code) => regions.find((region) => region.code === code)?.name ?? code,
+    );
+    const shown = names.slice(0, maxSkippedNames);
+    const more = names.length - shown.length;
+    return `Skipped ${more > 0 ? `${shown.join(", ")} and ${more} more` : new Intl.ListFormat("en-GB").format(shown)}.`;
+  }
+
+  function begin() {
+    // In the order the server handles regions, so a failure's region marks where to resume.
+    const codes = regions
+      .filter((region) => selected.has(region.code))
+      .map((region) => region.code);
+    void process({
+      action,
+      remaining: codes,
+      total: codes.length,
+      skipped: [],
+      result: {},
+    });
+  }
+
+  function skip() {
+    const code = session?.result.failure?.regionCode;
+    if (!session || !code) return;
+    void process({
+      ...session,
+      remaining: session.remaining.filter((remaining) => remaining !== code),
+      skipped: [...session.skipped, code],
+    });
+  }
+
+  function pause() {
+    pauseRequested.current = true;
+    setPausing(true);
+  }
+
+  function cancel() {
+    if (session && session.remaining.length < session.total) {
+      report(session.action, session.result, session.skipped);
+    } else {
+      setAlert(null);
+    }
+    setSession(null);
+    setPhase("idle");
   }
 
   function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -215,6 +354,10 @@ export default function PlaylistManager({
   }
 
   const count = selected.size;
+  const done = session ? session.total - session.remaining.length : 0;
+  const skippedNote = session?.skipped.length
+    ? ` (${session.skipped.length} skipped)`
+    : "";
   const confirmLabel = action.confirmLabel(
     regions.filter((region) => selected.has(region.code)),
   );
@@ -237,7 +380,7 @@ export default function PlaylistManager({
               aria-selected={active}
               aria-controls="action-panel"
               tabIndex={active ? 0 : -1}
-              disabled={busy}
+              disabled={session !== null}
               className={`-mb-px cursor-pointer border-b-2 px-3 py-2 font-semibold disabled:cursor-not-allowed ${active ? "border-accent text-fg" : "border-transparent text-fg-muted enabled:hover:text-fg"}`}
               onClick={() => setActionId(candidate.id)}
               onKeyDown={onTabKeyDown}
@@ -329,14 +472,66 @@ export default function PlaylistManager({
         </div>
       )}
 
-      <button
-        type="button"
-        className="w-full flex-none cursor-pointer rounded-lg bg-accent px-4 py-3 font-semibold text-white enabled:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45"
-        disabled={busy || count === 0}
-        onClick={() => void run()}
-      >
-        {busy ? action.busyLabel : confirmLabel}
-      </button>
+      {session && (
+        <p
+          className="mb-3 flex-none text-center text-sm text-fg-muted"
+          role="status"
+        >
+          {phase === "running"
+            ? `${session.action.busyLabel} ${done} of ${session.total} regions${skippedNote}`
+            : `${phase === "paused" ? "Paused" : "Stopped"} - ${done} of ${session.total} regions done${skippedNote}`}
+        </p>
+      )}
+
+      {session ? (
+        <div className="flex flex-none gap-3">
+          {phase === "running" ? (
+            <button
+              type="button"
+              className={`${secondaryButtonClass} w-full`}
+              disabled={pausing}
+              onClick={pause}
+            >
+              {pausing ? "Pausing..." : "Pause"}
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className={`${primaryButtonClass} flex-1`}
+                onClick={() => void process(session)}
+              >
+                Resume
+              </button>
+              {phase === "stopped" && session.result.failure?.regionCode && (
+                <button
+                  type="button"
+                  className={secondaryButtonClass}
+                  onClick={skip}
+                >
+                  Skip
+                </button>
+              )}
+              <button
+                type="button"
+                className={secondaryButtonClass}
+                onClick={cancel}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={`${primaryButtonClass} w-full`}
+          disabled={count === 0}
+          onClick={begin}
+        >
+          {confirmLabel}
+        </button>
+      )}
 
       {toast && (
         <div
