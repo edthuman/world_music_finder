@@ -69,7 +69,10 @@ async function loadWorldStyle(): Promise<StyleSpecification> {
 
 export default function Home() {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<{
+    name: string;
+    code: string;
+  } | null>(null);
   const selectedCountryId = useRef("");
   const clearSelection = useRef<() => void>(() => {});
 
@@ -210,7 +213,10 @@ export default function Home() {
               ["get", "ADM0_A3"],
               country.ADM0_A3,
             ]);
-            setSelectedCountry(country.NAME);
+            setSelectedCountry({
+              name: country.NAME,
+              code: country.ADM0_A3,
+            });
           } else {
             selectedCountryId.current = "";
             updateCountryBoundary();
@@ -271,7 +277,7 @@ export default function Home() {
           aria-live="polite"
         >
           <span className="text-ink-muted">Selected country</span>
-          <strong className="text-[1rem]">{selectedCountry}</strong>
+          <strong className="text-[1rem]">{selectedCountry.name}</strong>
           <button
             type="button"
             className="absolute top-2 right-[0.6rem] cursor-pointer text-[1.25rem]"
