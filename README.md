@@ -44,7 +44,7 @@ Keep your client secret private. `.env` is gitignored, so don't commit it.
 
 ## Database setup
 
-World Music Finder stores regions' playlists in a PostgreSQL database - so you should set one up before you run the app for the first time. You can install Postgres locally, run it in Docker, or use a hosted service.
+World Music Finder stores regions' playlists and songs in a PostgreSQL database - so you should set one up before you run the app for the first time. You can install Postgres locally, run it in Docker, or use a hosted service.
 
 Create an empty database, then set `DATABASE_URL` in your `.env` to its connection string. It generally looks like this, but the exact format depends on how you've set up Postgres:
 
@@ -70,7 +70,12 @@ Then run `npm run db:migrate` again to apply it.
 
 ## Settings page
 
-Admins can use the settings page to create Spotify playlists for the selectable regions of the map. The app saves details of the playlists it creates to the database.
+Admins can use the settings page to manage the region playlists. Select regions in the list, choose an action from the tabs and confirm it:
+
+- **Create playlists** creates a private Spotify playlist for each selected region you don't already have one for, and saves it to the database.
+- **Import songs** saves the songs in each selected region's playlists to the database, and removes saved songs you have taken out of a playlist. Regions whose playlists haven't changed since the last import are skipped.
+
+Each region in the list shows whether it has a playlist and how many songs are saved. Actions run in batches, and can be paused and resumed. When a region fails, the run stops and shows the error - resuming retries the request, skipping continues on from the next region, or the remaining requests can be cancelled.
 
 ## Development
 
