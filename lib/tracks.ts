@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { playlists, tracks } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import { regions } from "@/lib/regions";
@@ -10,9 +10,9 @@ import {
 } from "@/lib/spotify-api";
 
 export type ImportTracksResult = {
-  /** Regions whose playlists were read and saved. */
+  /** Regions whose playlist was read and saved. */
   imported: string[];
-  /** Regions where every playlist is unchanged since it was last imported. */
+  /** Regions where the playlist is unchanged since it was last imported. */
   unchanged: string[];
   /** Regions where none of the user's saved playlists are still in their library, so nothing was read. */
   noPlaylist: string[];
@@ -111,11 +111,11 @@ async function readSongs(
   return { songs };
 }
 
-/** Makes a region's saved songs match the songs read from its playlists, in one transaction. */
+/** Makes a region's saved songs match the songs read from its playlist, in one transaction. */
 async function saveRegionSongs(
   regionCode: string,
   songs: Song[],
-  imported: { id: string; snapshotId: string }[],
+  imported: { id: string; snapshotId: string },
 ) {
   return getDb().transaction(async (tx) => {
     const existing = await tx
@@ -168,13 +168,13 @@ async function saveRegionSongs(
         });
     }
 
-    const importedAt = new Date();
-    for (const { id, snapshotId } of imported) {
-      await tx
-        .update(playlists)
-        .set({ snapshotId, lastSpotifyIngestionAt: importedAt })
-        .where(eq(playlists.id, id));
-    }
+    await tx
+      .update(playlists)
+      .set({
+        snapshotId: imported.snapshotId,
+        lastSpotifyIngestionAt: new Date(),
+      })
+      .where(eq(playlists.id, imported.id));
 
     return {
       added: wanted.filter((song) => !existingIds.has(song.spotifyTrackId))
@@ -185,7 +185,10 @@ async function saveRegionSongs(
   });
 }
 
-/** Saves the songs in each selected region's playlists, and deletes ones no longer in them. Stops at the first failure. */
+/**
+ * Saves the songs in each selected region's newest playlist that is still in the user's library, and
+ * deletes ones no longer in it. Stops at the first failure.
+ */
 export async function importRegionTracks({
   accessToken,
   userId,
@@ -219,7 +222,8 @@ export async function importRegionTracks({
         inArray(playlists.regionCode, regionCodes),
         eq(playlists.ownerSpotifyUserId, userId),
       ),
-    );
+    )
+    .orderBy(desc(playlists.createdAt));
 
   const library = await playlistsInLibrary(
     accessToken,
@@ -230,65 +234,51 @@ export async function importRegionTracks({
   for (const region of regions.filter((candidate) =>
     regionCodes.includes(candidate.code),
   )) {
-    const live = saved.filter(
+    const playlist = saved.find(
       (row) =>
         row.regionCode === region.code &&
         library.inLibrary.has(row.spotifyPlaylistId),
     );
-    if (live.length === 0) {
+    if (!playlist) {
       result.noPlaylist.push(region.code);
       continue;
     }
 
-    const metas: PlaylistMeta[] = [];
-    for (const row of live) {
-      const response = await spotifyRequest(
-        accessToken,
-        `/playlists/${row.spotifyPlaylistId}?fields=snapshot_id,items.total`,
-      );
-      if (!response.ok) {
-        return { ...result, failure: await failureFrom(response, region.code) };
-      }
-      metas.push((await response.json()) as PlaylistMeta);
-    }
-
-    // Removals depend on every playlist in the region, so they are all read unless none changed.
-    const unchanged = live.every(
-      (row, index) =>
-        row.lastSpotifyIngestionAt &&
-        row.snapshotId === metas[index].snapshot_id,
+    const response = await spotifyRequest(
+      accessToken,
+      `/playlists/${playlist.spotifyPlaylistId}?fields=snapshot_id,items.total`,
     );
-    if (unchanged) {
+    if (!response.ok) {
+      return { ...result, failure: await failureFrom(response, region.code) };
+    }
+    const meta = (await response.json()) as PlaylistMeta;
+
+    if (
+      playlist.lastSpotifyIngestionAt &&
+      playlist.snapshotId === meta.snapshot_id
+    ) {
       result.unchanged.push(region.code);
       continue;
     }
 
-    const songs: Song[] = [];
-    for (const [index, row] of live.entries()) {
-      const read = await readSongs(
-        accessToken,
-        row.spotifyPlaylistId,
-        metas[index].items.total,
-      );
-      if (!read.songs) {
-        return {
-          ...result,
-          failure: { ...read.failure, regionCode: region.code },
-        };
-      }
-      songs.push(...read.songs);
+    const read = await readSongs(
+      accessToken,
+      playlist.spotifyPlaylistId,
+      meta.items.total,
+    );
+    if (!read.songs) {
+      return {
+        ...result,
+        failure: { ...read.failure, regionCode: region.code },
+      };
     }
 
     try {
-      // The snapshots are the ones read before the songs, so a change made mid-read is picked up next time.
-      const saveResult = await saveRegionSongs(
-        region.code,
-        songs,
-        live.map((row, index) => ({
-          id: row.id,
-          snapshotId: metas[index].snapshot_id,
-        })),
-      );
+      // The snapshot is the one read before the songs, so a change made mid-read is picked up next time.
+      const saveResult = await saveRegionSongs(region.code, read.songs, {
+        id: playlist.id,
+        snapshotId: meta.snapshot_id,
+      });
       result.added += saveResult.added;
       result.removed += saveResult.removed;
       result.duplicates += saveResult.duplicates;
