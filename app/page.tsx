@@ -10,6 +10,7 @@ import {
   type StyleSpecification,
 } from "maplibre-gl";
 import { Protocol } from "pmtiles";
+import RegionModal from "@/components/region-modal";
 
 setWorkerUrl(
   new URL(
@@ -272,23 +273,10 @@ export default function Home() {
         aria-label="Interactive world map"
       />
       {selectedCountry && (
-        <aside
-          className="absolute top-5 left-5 z-2 grid min-w-48 gap-1 rounded-[0.4rem] border border-ink/16 bg-white/94 py-[0.9rem] pr-11 pl-4 font-sans text-xs/[1.3] text-ink shadow-[0_3px_14px_rgba(20,39,31,0.14)]"
-          aria-live="polite"
-        >
-          <span className="text-ink-muted">Selected country</span>
-          <strong className="text-[1rem]">{selectedCountry.name}</strong>
-          <button
-            type="button"
-            className="absolute top-2 right-[0.6rem] cursor-pointer text-[1.25rem]"
-            aria-label="Clear selected country"
-            onClick={() => {
-              clearSelection.current();
-            }}
-          >
-            x
-          </button>
-        </aside>
+        <RegionModal
+          name={selectedCountry.name}
+          onClose={() => clearSelection.current()}
+        />
       )}
     </main>
   );
