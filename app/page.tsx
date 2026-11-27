@@ -275,6 +275,7 @@ export default function Home() {
       {selectedCountry && (
         <RegionModal
           name={selectedCountry.name}
+          code={selectedCountry.code}
           onClose={() => clearSelection.current()}
         />
       )}
