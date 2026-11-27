@@ -208,10 +208,13 @@ export async function importRegionTracks({
   accessToken,
   userId,
   regionCodes,
+  force = false,
 }: {
   accessToken: string;
   userId: string;
   regionCodes: string[];
+  /** Read playlists again even if they are unchanged since the last import. */
+  force?: boolean;
 }): Promise<ImportTracksResult> {
   const db = getDb();
   const result: ImportTracksResult = {
@@ -269,6 +272,7 @@ export async function importRegionTracks({
     const meta = (await response.json()) as PlaylistMeta;
 
     if (
+      !force &&
       playlist.lastSpotifyIngestionAt &&
       playlist.snapshotId === meta.snapshot_id
     ) {
