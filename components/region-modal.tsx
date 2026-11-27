@@ -9,6 +9,27 @@ type TrackState =
   | { status: "error" }
   | { status: "ready"; track: RandomTrack };
 
+/** Square album artwork that fades in once loaded, and is left out if it is missing or fails to load. */
+function Artwork({ url, alt }: { url: string; alt: string }) {
+  const [status, setStatus] = useState<"loading" | "loaded" | "failed">(
+    "loading",
+  );
+  if (status === "failed") return null;
+
+  return (
+    <div className="mb-2 size-56 overflow-hidden rounded-[0.3rem] bg-ink/8">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt={alt}
+        className={`size-full object-cover transition-opacity duration-300 ${status === "loaded" ? "opacity-100" : "opacity-0"}`}
+        onLoad={() => setStatus("loaded")}
+        onError={() => setStatus("failed")}
+      />
+    </div>
+  );
+}
+
 export default function RegionModal({
   name,
   code,
@@ -77,6 +98,13 @@ export default function RegionModal({
           )}
           {state.status === "ready" && (
             <>
+              {state.track.imageUrl && (
+                <Artwork
+                  key={state.track.imageUrl}
+                  url={state.track.imageUrl}
+                  alt={`Album artwork for ${state.track.name}`}
+                />
+              )}
               <strong className="text-xl">{state.track.name}</strong>
               <span className="text-base text-ink-muted">
                 {state.track.artists}
