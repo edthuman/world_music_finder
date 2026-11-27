@@ -9,23 +9,41 @@ type TrackState =
   | { status: "error" }
   | { status: "ready"; track: RandomTrack };
 
-/** Square album artwork that fades in once loaded, and is left out if it is missing or fails to load. */
-function Artwork({ url, alt }: { url: string; alt: string }) {
+/** Shown in place of album artwork the song doesn't have or that fails to load. */
+function ArtworkPlaceholder() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="size-1/3 fill-none stroke-ink stroke-[1.5] opacity-35 [stroke-linecap:round] [stroke-linejoin:round]"
+    >
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+}
+
+/** Square album artwork that fades in once loaded, with a placeholder if it is missing or fails to load. */
+function Artwork({ url, alt }: { url: string | null; alt: string }) {
   const [status, setStatus] = useState<"loading" | "loaded" | "failed">(
     "loading",
   );
-  if (status === "failed") return null;
 
   return (
-    <div className="mb-2 size-56 overflow-hidden rounded-[0.3rem] bg-ink/8">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={url}
-        alt={alt}
-        className={`size-full object-cover transition-opacity duration-300 ${status === "loaded" ? "opacity-100" : "opacity-0"}`}
-        onLoad={() => setStatus("loaded")}
-        onError={() => setStatus("failed")}
-      />
+    <div className="mb-2 grid size-56 place-items-center overflow-hidden rounded-[0.3rem] bg-ink/8">
+      {!url || status === "failed" ? (
+        <ArtworkPlaceholder />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt={alt}
+          className={`size-full object-cover transition-opacity duration-300 ${status === "loaded" ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setStatus("loaded")}
+          onError={() => setStatus("failed")}
+        />
+      )}
     </div>
   );
 }
@@ -98,13 +116,11 @@ export default function RegionModal({
           )}
           {state.status === "ready" && (
             <>
-              {state.track.imageUrl && (
-                <Artwork
-                  key={state.track.imageUrl}
-                  url={state.track.imageUrl}
-                  alt={`Album artwork for ${state.track.name}`}
-                />
-              )}
+              <Artwork
+                key={state.track.imageUrl ?? "none"}
+                url={state.track.imageUrl}
+                alt={`Album artwork for ${state.track.name}`}
+              />
               <strong className="text-xl">{state.track.name}</strong>
               <span className="text-base text-ink-muted">
                 {state.track.artists}
