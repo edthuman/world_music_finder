@@ -41,6 +41,7 @@ type PlaylistEntry = {
     is_local?: boolean;
     artists?: { name: string }[];
     external_ids?: { isrc?: string };
+    album?: { images?: { url: string; width?: number | null }[] };
   } | null;
 };
 
@@ -50,6 +51,7 @@ type Song = {
   artists: string;
   isrc: string | null;
   explicit: boolean;
+  imageUrl: string | null;
 };
 
 const pageSize = 50;
@@ -63,6 +65,17 @@ function* batches<T>(items: T[]) {
 
 function normaliseIsrc(isrc?: string) {
   return isrc?.replaceAll("-", "").toUpperCase() || null;
+}
+
+/** The URL of the largest album image, or null if the album has none. */
+function largestImageUrl(
+  images: { url: string; width?: number | null }[] = [],
+) {
+  let largest: (typeof images)[number] | undefined;
+  for (const image of images) {
+    if (!largest || (image.width ?? 0) > (largest.width ?? 0)) largest = image;
+  }
+  return largest?.url ?? null;
 }
 
 /** Reads every song in a playlist, skipping local files, episodes and removed entries. */
@@ -94,6 +107,7 @@ async function readSongs(
         artists: (item.artists ?? []).map((artist) => artist.name).join(", "),
         isrc: normaliseIsrc(item.external_ids?.isrc),
         explicit: item.explicit,
+        imageUrl: largestImageUrl(item.album?.images),
       });
     }
   }
@@ -164,6 +178,7 @@ async function saveRegionSongs(
             artists: sql`excluded.artists`,
             isrc: sql`excluded.isrc`,
             explicit: sql`excluded.explicit`,
+            imageUrl: sql`excluded.image_url`,
           },
         });
     }
