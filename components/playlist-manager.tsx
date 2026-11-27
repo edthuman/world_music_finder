@@ -98,7 +98,7 @@ const actions: Action[] = [
     id: "import",
     label: "Import songs",
     description:
-      "Saves the songs from each selected region's playlists into the database. Saved songs no longer in the playlist are deleted. Skips regions whose playlists have not changed since the last import, unless re-import is forced.",
+      "Saves the songs from each selected region's playlists into the database. Saved songs no longer in the playlist are deleted. Skips regions whose playlists have not changed since the last import, unless the import is forced.",
     busyLabel: "Importing songs...",
     confirmLabel: (selected) =>
       selected.length === 0
@@ -422,13 +422,13 @@ export default function PlaylistManager({
           {action.supportsForce && (
             <label className="flex cursor-pointer items-center gap-2 text-fg">
               <input
-                className="size-[1.15rem] accent-accent"
+                className="size-4 accent-accent"
                 type="checkbox"
                 checked={force}
                 disabled={session !== null}
                 onChange={(event) => setForce(event.target.checked)}
               />
-              <span>Force re-import</span>
+              <span>Force import</span>
             </label>
           )}
         </div>
