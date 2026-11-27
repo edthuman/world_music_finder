@@ -28,6 +28,8 @@ type Action = {
   description: string;
   busyLabel: string;
   confirmLabel: (selected: Region[]) => string;
+  /** Whether the action can be forced to redo regions that are already up to date. */
+  supportsForce?: boolean;
   endpoint: string;
   describe: (result: Result, regions: Region[]) => string;
 };
@@ -96,7 +98,7 @@ const actions: Action[] = [
     id: "import",
     label: "Import songs",
     description:
-      "Saves the songs from each selected region's playlists into the database. Saved songs no longer in the playlist are deleted. Skips regions whose playlists have not changed since the last import.",
+      "Saves the songs from each selected region's playlists into the database. Saved songs no longer in the playlist are deleted. Skips regions whose playlists have not changed since the last import, unless the import is forced.",
     busyLabel: "Importing songs...",
     confirmLabel: (selected) =>
       selected.length === 0
@@ -104,6 +106,7 @@ const actions: Action[] = [
         : selected.length === 1
           ? `Import songs for ${selected[0].name}`
           : `Import songs for ${selected.length} regions`,
+    supportsForce: true,
     endpoint: "/api/admin/tracks",
     describe: describeImport,
   },
@@ -111,6 +114,8 @@ const actions: Action[] = [
 
 type Session = {
   action: Action;
+  /** Whether unchanged regions are processed anyway. */
+  force: boolean;
   /** Region codes not yet processed, in the order the server handles them. */
   remaining: string[];
   total: number;
@@ -167,6 +172,7 @@ export default function PlaylistManager({
   const allToggle = useRef<HTMLInputElement>(null);
   const [actionId, setActionId] = useState(actions[0].id);
   const [query, setQuery] = useState("");
+  const [force, setForce] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [session, setSession] = useState<Session | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -248,7 +254,10 @@ export default function PlaylistManager({
         const response = await fetch(action.endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ regionCodes: batch }),
+          body: JSON.stringify({
+            regionCodes: batch,
+            ...(start.force && { force: true }),
+          }),
         });
         next = (await response.json()) as Result;
       } catch {
@@ -311,6 +320,7 @@ export default function PlaylistManager({
       .map((region) => region.code);
     void process({
       action,
+      force: action.supportsForce === true && force,
       remaining: codes,
       total: codes.length,
       skipped: [],
@@ -409,6 +419,18 @@ export default function PlaylistManager({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
+          {action.supportsForce && (
+            <label className="flex cursor-pointer items-center gap-2 text-fg">
+              <input
+                className="size-4 accent-accent"
+                type="checkbox"
+                checked={force}
+                disabled={session !== null}
+                onChange={(event) => setForce(event.target.checked)}
+              />
+              <span>Force import</span>
+            </label>
+          )}
         </div>
 
         <div className="min-h-32 overflow-y-auto rounded-lg border border-edge bg-surface">

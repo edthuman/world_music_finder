@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => null)) as {
     regionCodes?: unknown;
+    force?: unknown;
   } | null;
   const selected = parseRegionCodes(body?.regionCodes);
   if (!selected) {
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
         accessToken: admin.accessToken,
         userId: admin.userId,
         regionCodes: selected,
+        force: body?.force === true,
       }),
     );
   } catch (error) {

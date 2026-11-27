@@ -41,6 +41,7 @@ export const tracks = pgTable(
     artists: text("artists").notNull(),
     isrc: text("isrc"),
     explicit: boolean("explicit").notNull().default(false),
+    imageUrl: text("image_url"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
