@@ -114,3 +114,27 @@ Check formatting with Prettier:
 ```bash
 npx prettier --check .
 ```
+
+## Tests
+
+The tests use Vitest and run against a real Postgres database. A separate test database is used as its tables are emptied during test setup.
+
+Create an empty database for them and set `TEST_DATABASE_URL` to its connection string in a `.env.test` file, like this:
+
+```
+TEST_DATABASE_URL=postgres://<user>:<password>@<host>:<port>/<database name>
+```
+
+Then run the tests, which first apply any pending migrations to the test database:
+
+```bash
+npm test
+```
+
+To re-run the tests every time you make a change to a file, use:
+
+```bash
+npm run test:watch
+```
+
+In IDEs that read `.vscode/launch.json`, such as VSCode, you can also run the **Run tests** launch configuration, which runs `npm test` in a terminal.
