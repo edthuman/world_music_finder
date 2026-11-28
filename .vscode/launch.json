@@ -5,6 +5,17 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Run tests",
+      "command": "npm test",
+      "request": "launch",
+      "type": "node-terminal",
+      "presentation": {
+        "hidden": false,
+        "group": "1",
+        "order": 2
+      }
+    },
+    {
       "name": "Start dev",
       "command": "npm run dev",
       "request": "launch",
